@@ -1,19 +1,57 @@
-# `simanvil`
+# SimAnvil
 
-**Deterministic MuJoCo Asset Forging, Interactive Contact-Force Inspection, and Quality-Weighted VLA Dataset Compilation.**
+<p align="left">
+  <strong>The Deterministic Physics Anvil for Embodied AI — Forge concave assets, inspect causal 3D contact mechanics, and assay quality-weighted VLA datasets.</strong>
+  <br/>
+  <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">HD Showcase Video (.mp4)</a>
+</p>
 
-`simanvil` pairs a **zero-LLM deterministic physics & data core** (`src/simanvil/`) with **Agent Skills** (`skills/`) so both human robotics engineers and AI coding agents can compile concave 3D assets, audit contact mechanics without Reward Hacking, and export quality-weighted **LeRobot v3** datasets.
+![SimAnvil Counterfactual Physics Audit](docs/assets/hero_demo.gif)
 
 ---
 
-## Architecture & Core Subcommands
+## Why SimAnvil?
 
-| Stage | CLI / Python API | What It Does |
-| :--- | :--- | :--- |
-| **1. Forge** | `simanvil forge`<br>`simanvil.forge_asset` | Normalizes `.glb/.obj/.stl/.ply` meshes in Headless Blender 4.x (`ORIGIN_CENTER_OF_VOLUME`, strict **Z-up** `< 1 µm` alignment), runs **CoACD** convex decomposition (`group="2"` visual, `group="3" condim="4"` collision, `group="4"` sites), and executes a 200-step MuJoCo stability & cavity-clearance smoke audit. |
-| **2. Trace** | `simanvil.AnvilRecorder`<br>`simanvil.verify_causal_replay` | Records lightweight `(state, qpos, qvel, controls, final_state, phase)` `.npz` episodes in 4 lines of Python and verifies pure-actuator causal replay (`Δqpos < 1e-7`). |
-| **3. Inspect** | `simanvil inspect`<br>`simanvil.export_inspection_bundle` | Compiles `.npz` trajectories into a zero-backend static HTML 3D Session Viewer featuring Three.js Z-up sync (`[w,x,y,z] → [x,y,z,w]`), PBR / Ghost+Hulls / Pure Hulls toggles, live 3D `mj_contactForce` arrows, and all-intra (`GOP=1`) dual camera streams. |
-| **4. Assay** | `simanvil assay`<br>`simanvil.assay_to_lerobot_v3` | Detects slip/retry/fault anomalies, clamps stalled `task_progress` slopes to `0.0`, assigns `0.15×` BC `sample_weight` to anomalous frames, and exports PyAV-readback-verified **LeRobot v3** datasets. |
+Scaling synthetic MuJoCo data for Vision-Language-Action (VLA) policies hits three recurring failure modes that plain RGB rollout videos hide:
+
+1. **The Shrink-Wrap Trap**: Dropping raw `.obj` / `.glb` meshes into MuJoCo wraps concave bins, bowls, and brackets in a single outer convex hull—sealing cavities behind invisible air-walls while Blender's default Y-up `.glb` export silently misaligns WebGL visuals from Z-up physics.
+2. **Silent Reward Hacking**: Scripted or RL rollouts often look plausible in RGB while relying on state teleportation, weld-assisted grasps, or `>100 N` penetration spikes.
+3. **Poisoned Imitation Trajectories**: Slip/retry loops, IK singularities, and rim-collision tails degrade policy learning if trained at `1.0×` weight, yet dropping entire episodes wastes clean prefix data and breaks action-chunk temporal continuity.
+
+**`simanvil`** provides a **zero-LLM deterministic physics & dataset core** (`src/simanvil/`) paired with **Agent Skills** (`skills/`), turning both terminal pipelines and AI coding agents into a rigorous physical compilation loop.
+
+---
+
+## Interactive 3D Session Viewer (`simanvil inspect`)
+
+Every trajectory compiles into a self-contained, zero-backend static HTML workbench (`Z-up [0,0,1]`, `[w,x,y,z] → [x,y,z,w]` quaternion sync, live `mj_contactForce` 3D vectors, `1/2/3` PBR ↔ Convex Hull toggles, and `GOP=1` frame-exact dual camera scrubbing):
+
+| Concave Kitting (28 CoACD Hulls + 3D Force Vectors) | Non-Prehensile Finger-Drag & 5×7 Glyph Inspection |
+| :---: | :---: |
+| ![CoACD Convex Hull Overlay](docs/assets/viewer_coacd_hulls.png) | ![ToyBlocks Contact Inspection](docs/assets/viewer_toyblocks_glyphs.png) |
+
+---
+
+## Dual-Interface Architecture: CLI for Humans, `skills/` for Agents
+
+```text
+  Raw Mesh (.glb/.obj)             MuJoCo Physics Loop                VLA Training (LeRobot / OpenPI)
+          │                                │                                        ▲
+          ▼                                ▼                                        │
+  ┌───────────────┐              ┌───────────────────┐                    ┌───────────────────┐
+  │ simanvil forge│ ──MjSpec───► │  AnvilRecorder    │ ──.npz + Δqpos=0─► │  simanvil assay   │
+  │ Blender Z-up  │              │  (state, controls,│        │           │  0-slope clamp +  │
+  │ + CoACD +     │              │   phase @ 500Hz)  │        │           │  0.15x BC weight  │
+  │ Smoke Audit   │              └───────────────────┘        ▼           │  -> LeRobot v3    │
+  └───────────────┘                                  ┌──────────────────┐ └───────────────────┘
+                                                     │ simanvil inspect │
+                                                     │ 3D Force Arrows  │
+                                                     │ + Hull Overlays  │
+                                                     └──────────────────┘
+```
+
+- **For Engineers & CI Clusters**: `src/simanvil/` has **zero LLM SDK dependencies**—deterministic geometry, physics verification, and dataset compilation run offline anywhere.
+- **For AI Coding Agents (Antigravity / Claude Code / Cursor / Codex)**: Mount [`plugin.json`](plugin.json) or [`skills/`](skills/) so the host multimodal agent uses `simanvil` to forge concave parts, inspect browser contact sheets for Reward Hacking, and iterate on controllers.
 
 ---
 
@@ -23,52 +61,86 @@
 # Core package (Forge + Trace + Inspect — lightweight, no PyTorch required)
 pip install -e .
 
-# Optional: LeRobot v3 dataset assaying & PyAV tensor readback
+# Optional: LeRobot v3 dataset assaying & PyAV tensor readback verification
 pip install -e ".[lerobot,dev]"
 ```
 
-*Note: `simanvil forge` requires Blender 4.x installed (`/Applications/Blender.app` on macOS, `blender` on `PATH`, or `BLENDER_BIN=/path/to/Blender`).*
+*`simanvil forge` invokes Headless Blender 4.x (`/Applications/Blender.app` on macOS, `blender` on `PATH`, or `BLENDER_BIN=/path/to/Blender`).*
 
 ---
 
-## 30-Second Quickstart
+## 60-Second Quickstart
+
+### 1. Run the Self-Contained CoACD vs. Shrink-Wrap Benchmark
+
+No external robot asset downloads required:
 
 ```bash
-# 1. Run self-contained CoACD vs Shrink-Wrap benchmark & build HTML Session Viewer
 python examples/quickstart_kitting.py
-
-# 2. Launch local preview server
 simanvil serve --dir outputs/quickstart/session --port 8895
+# Open http://127.0.0.1:8895/index.html (keys: Space play/pause, 1/2/3 hull modes, F force vectors)
+```
 
-# 3. Forge any external concave 3D mesh (.glb / .obj / .stl)
-simanvil forge \
-  --name part_bin \
-  --input path/to/raw_bin.glb \
-  --material aluminum_6061 \
-  --threshold 0.02 \
-  --output outputs/assets/part_bin
+### 2. Record Any Existing MuJoCo Loop in 4 Lines
 
-# 4. Inspect any recorded MuJoCo episode (+ optional LeRobot v3 dataset export)
-simanvil inspect my_episode.npz --model scene.xml \
+`AnvilRecorder` never stores bulky RGB arrays during stepping—saving ~200 KB `(state, controls, phase)` traces that deterministically reconstruct multi-view RGB and 3D contact wrenches offline with `Δqpos == 0` causal replay verification:
+
+```python
+from pathlib import Path
+from simanvil import AnvilRecorder
+
+rec = AnvilRecorder(model, data, task="Open cabinet drawer", robot_type="my_arm", fps=25)
+for step in range(500):
+    rec.step(ctrl, phase="S1_PULL/pull_handle")  # use 'retry' / 'fault' tokens to auto-flag anomalies
+rec.save(Path("outputs/runs/ep_001.npz"), passed=True)
+```
+
+Then inspect in 3D and assay into a quality-weighted **LeRobot v3** dataset in one command:
+
+```bash
+simanvil inspect outputs/runs/ep_001.npz \
   --output outputs/session \
   --assay-out outputs/lerobot_v3
 ```
 
+### 3. Train VLA / Imitation Policies with Frame-Level `sample_weight`
+
+```python
+per_frame_loss = criterion(pred_action, batch["action"])  # (B, ...)
+weights = batch["sample_weight"].view(-1, *([1] * (per_frame_loss.ndim - 1)))
+loss = (per_frame_loss * weights).sum() / weights.sum().clamp_min(1e-6)
+```
+
 ---
 
-## Agent Skills Integration
+## Physical & Engineering Invariants
 
-`simanvil` ships a ready-to-mount [`plugin.json`](plugin.json) and three specialized agent skills under [`skills/`](skills/):
+| Contract | Guarantee in `simanvil` |
+| :--- | :--- |
+| **Single-Source Z-Up Alignment** | Headless Blender normalizes `ORIGIN_CENTER_OF_VOLUME` and exports `visual.glb` (`export_yup=False`) + `collision_source.obj` (`Y-forward, Z-up`), asserting bounding-box delta `< 1e-4 m` (`~0.2 µm` typical). |
+| **MuJoCo Layer Convention** | `group="2"` visual (`contype=0, conaffinity=0`), `group="3"` CoACD convex hulls (`condim=4` torsional friction), `group="4"` reference `<site>`s. |
+| **Quaternion & Pose Sync** | `THREE.Object3D.DefaultUp.set(0, 0, 1)` + strict MuJoCo `[w, x, y, z]` → Three.js `Quaternion(x, y, z, w)` body synchronization. |
+| **Causal Replay Verification** | Re-integrates native high-frequency `controls` from `state[0]` via `mj_step` and records endpoint `max_abs_qpos_err`. |
+| **Zero-Lag Frame Scrubbing & Readback** | `PyAV` all-intra (`GOP=1`) H.264 camera streams for instant frame-stepping; `LeRobot v3` exports verify decoded RGB `MAE < 0.05` before publishing. |
+| **Zero-Intrusion Benchmark Adapters** | Plug external benchmarks via `register_episode_adapter` without touching core code (see [`examples/inspect_toyblocks_dir.py`](examples/inspect_toyblocks_dir.py)). |
 
-- [`simanvil-forge`](skills/simanvil-forge/SKILL.md): Parameter selection, articulated part splitting, and `MjSpec` mounting rules;
-- [`simanvil-inspect`](skills/simanvil-inspect/SKILL.md): Anti-Reward-Hacking visual & contact-force audit checklist;
-- [`simanvil-assay`](skills/simanvil-assay/SKILL.md): 4-tier hindsight relabeling and weighted BC / Flow-Matching loss integration.
+---
+
+## Bundled Agent Skills
+
+- [`skills/simanvil-forge/SKILL.md`](skills/simanvil-forge/SKILL.md) — Concavity threshold tuning, articulated part splitting, and `attach_forged_asset(MjSpec)` rules.
+- [`skills/simanvil-inspect/SKILL.md`](skills/simanvil-inspect/SKILL.md) — Anti-Reward-Hacking visual & contact-force audit checklist.
+- [`skills/simanvil-assay/SKILL.md`](skills/simanvil-assay/SKILL.md) — 4-tier hindsight relabeling (`G1–G3`) and anomaly policy selection (`downweight` / `zero-anomaly-frames` / `drop-failed-episodes`).
 
 ---
 
 ## Roadmap
 
 - [x] **v0.1**: Single-source Blender Z-up + CoACD `forge`, causal `AnvilRecorder`, multi-model HTML `inspect` workbench, weighted `LeRobot v3` `assay`, and Agent `skills/`
-- [ ] **v0.2**: Multi-part articulated `.glb` auto-splitting (`hinge` / `slide` joint synthesis), MuJoCo 4 Filament PBR (`mjrf`) optional renderer, and `.mcap` real-robot log adapter
-- [ ] **v0.3**: Headless contact-sheet visual critic CLI (`simanvil check-viewer`) and `mujoco_warp` batch domain randomization hooks
+- [ ] **v0.2**: Multi-part articulated `.glb` auto-splitting (`hinge` / `slide` joint synthesis), optional MuJoCo 4 Filament PBR (`mjrf`) backend, and `.mcap` real-robot log adapter
+- [ ] **v0.3**: Headless contact-sheet visual critic CLI (`simanvil check-viewer`) and `mujoco_warp` batch domain-randomization hooks
 - [ ] **v0.4**: Single-image tabletop reconstruction workflow and real-robot two-stage Dry-Run safety verifier
+
+## License
+
+Apache-2.0. See [LICENSE](LICENSE).
