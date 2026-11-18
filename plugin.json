@@ -1,0 +1,10 @@
+{
+  "name": "simanvil",
+  "version": "0.1.0",
+  "description": "Agent skills for deterministic MuJoCo concave asset forging (Blender + CoACD), interactive 3D contact-force session inspection, and quality-weighted LeRobot v3 dataset assaying.",
+  "skills": [
+    "skills/simanvil-forge",
+    "skills/simanvil-inspect",
+    "skills/simanvil-assay"
+  ]
+}

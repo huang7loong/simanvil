@@ -1,0 +1,22 @@
+# Python & build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environments
+.venv/
+venv/
+ENV/
+
+# Generated outputs & OS metadata
+artifacts/
+outputs/
+*.mp4
+*.DS_Store

@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "simanvil"
+version = "0.1.0"
+description = "SimAnvil: Deterministic MuJoCo asset forging, interactive contact-force inspection, and quality-weighted VLA dataset compilation."
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "mujoco>=3.2.0",
+  "trimesh>=4.0.0",
+  "coacd>=1.0.0",
+  "lxml>=5.0.0",
+  "Pillow>=10.0.0",
+  "av>=12.0.0",
+]
+
+[project.optional-dependencies]
+lerobot = [
+  "torch>=2.2.0",
+  "torchvision>=0.17.0",
+  "datasets>=3.0.0",
+  "lerobot>=0.4.0",
+]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[project.scripts]
+simanvil = "simanvil.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+simanvil = ["inspect/web/*", "inspect/web/vendor/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

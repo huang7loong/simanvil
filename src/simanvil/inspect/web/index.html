@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SimAnvil · Interactive Physics Session Viewer</title>
+  <link rel="stylesheet" href="viewer.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-group">
+        <span class="brand-badge">SIMANVIL v0.1</span>
+        <h1 id="session-title">MuJoCo Contact Physics &amp; Trajectory Audit</h1>
+        <span class="coord-pill" title="Three.js DefaultUp=(0,0,1), MuJoCo [w,x,y,z] -> Three [x,y,z,w]">Z-UP · CAUSAL VERIFIED</span>
+      </div>
+
+      <div id="run-switcher" class="run-switcher" role="tablist" aria-label="Episode Switcher"></div>
+
+      <div id="verdict-pill" class="verdict-pill pass">LOADING SESSION…</div>
+    </header>
+
+    <main class="workbench">
+      <section class="viewport-pane" aria-label="Interactive 3D MuJoCo Scene">
+        <div id="canvas-container" class="canvas-container"></div>
+
+        <div class="hud-toolbar top-left">
+          <div class="seg-group" role="group" aria-label="Mesh Display Mode">
+            <button type="button" class="seg-btn" data-layer="visual" title="Shortcut: 1">1 · 外观 PBR</button>
+            <button type="button" class="seg-btn active" data-layer="ghost" title="Shortcut: 2">2 · 半透 + 凸包</button>
+            <button type="button" class="seg-btn" data-layer="hulls" title="Shortcut: 3">3 · 纯碰撞凸包</button>
+          </div>
+          <label class="toggle-chip" title="Shortcut: F">
+            <input type="checkbox" id="chk-forces" checked>
+            <span>接触力矢量 (Force Arrows)</span>
+          </label>
+          <label class="toggle-chip">
+            <input type="checkbox" id="chk-wireframe" checked>
+            <span>凸包线框</span>
+          </label>
+        </div>
+
+        <div class="hud-toolbar top-right">
+          <button type="button" class="cam-btn active" data-cam="hero">全景</button>
+          <button type="button" class="cam-btn" data-cam="tray">工位特写</button>
+          <button type="button" class="cam-btn" data-cam="side">平视切面</button>
+          <button type="button" class="cam-btn" data-cam="top">俯视</button>
+        </div>
+
+        <div class="hud-card bottom-left">
+          <div class="hud-card-header">
+            <span>ACTIVE CONTACTS (<span id="contact-count">0</span>)</span>
+            <span id="peak-force-readout" class="mono">0.0 N</span>
+          </div>
+          <ul id="contact-list" class="contact-list"></ul>
+          <div id="compiler-summary" class="compiler-summary"></div>
+        </div>
+      </section>
+
+      <aside class="audit-pane" aria-label="Multi-Camera and Telemetry Audit">
+        <div class="camera-grid">
+          <div class="cam-card">
+            <div class="cam-label"><span id="lbl-cam-overview">OVERVIEW CAM</span><span class="mono">SYNCED</span></div>
+            <video id="vid-overview" muted playsinline preload="auto"></video>
+          </div>
+          <div class="cam-card">
+            <div class="cam-label"><span id="lbl-cam-wrist">WRIST CAM</span><span class="mono">SYNCED</span></div>
+            <video id="vid-wrist" muted playsinline preload="auto"></video>
+          </div>
+        </div>
+
+        <div class="annotation-card">
+          <div class="ann-row">
+            <span class="ann-tag">G1 GLOBAL</span>
+            <span id="ann-g1" class="ann-val">—</span>
+          </div>
+          <div class="ann-grid">
+            <div class="ann-cell">
+              <span class="ann-sub">G2 STAGE</span>
+              <strong id="ann-g2" class="mono">—</strong>
+            </div>
+            <div class="ann-cell">
+              <span class="ann-sub">G3 CONTACT PRIMITIVE</span>
+              <strong id="ann-g3" class="mono">—</strong>
+            </div>
+            <div class="ann-cell">
+              <span class="ann-sub">TASK PROGRESS</span>
+              <strong id="ann-prog" class="mono">0.0%</strong>
+            </div>
+            <div class="ann-cell">
+              <span class="ann-sub">BC LOSS WEIGHT</span>
+              <strong id="ann-weight" class="mono weight-clean">1.00×</strong>
+            </div>
+          </div>
+          <div id="verdict-detail" class="verdict-detail"></div>
+        </div>
+
+        <div class="charts-stack">
+          <div class="chart-card">
+            <div class="chart-header">
+              <span>CONTACT FORCE TELEMETRY (N)</span>
+              <span class="legend">
+                <i class="swatch cyan"></i>末端/指垫 <strong id="val-pad-f" class="mono">0.0N</strong>
+                <i class="swatch amber"></i>工件↔环境 <strong id="val-tray-f" class="mono">0.0N</strong>
+              </span>
+            </div>
+            <canvas id="chart-forces" width="640" height="128"></canvas>
+          </div>
+
+          <div class="chart-card">
+            <div class="chart-header">
+              <span id="chart2-title">KINEMATICS / SEATING (mm) &amp; PROGRESS</span>
+              <span id="chart2-legend" class="legend"></span>
+            </div>
+            <canvas id="chart-seating" width="640" height="136"></canvas>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="timeline-bar">
+      <div class="transport-controls">
+        <button type="button" id="btn-prev" class="icon-btn" title="Previous Frame (←)">⏮</button>
+        <button type="button" id="btn-play" class="play-btn" title="Play / Pause (Space)">▶ PLAY</button>
+        <button type="button" id="btn-next" class="icon-btn" title="Next Frame (→)">⏭</button>
+        <select id="sel-speed" aria-label="Playback Speed">
+          <option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option>
+          <option value="1" selected>1.0×</option>
+          <option value="2">2.0×</option>
+        </select>
+      </div>
+
+      <div class="scrubber-wrap">
+        <div id="phase-ribbon" class="phase-ribbon"></div>
+        <input type="range" id="timeline-slider" min="0" max="100" value="0" step="1" aria-label="Global Synced Timeline">
+      </div>
+
+      <div class="time-readout mono">
+        <span id="frame-counter">F 000 / 000</span>
+        <span class="sep">·</span>
+        <span id="time-counter">0.00 s</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="vendor/three.min.js"></script>
+  <script src="vendor/OrbitControls.js"></script>
+  <script src="vendor/GLTFLoader.js"></script>
+  <script src="viewer.js"></script>
+</body>
+</html>
