@@ -1,13 +1,13 @@
 # SimAnvil
 
 <p align="left">
-  <strong>The Digital Physics Anvil for Embodied AI — Forge concave assets, inspect 3D contact mechanics, and assay quality-weighted VLA datasets.</strong>
+  <strong>The Digital Physics Anvil for Embodied AI — Concave asset forging, interactive 3D force visualization, closed-loop physics evaluation, and weighted VLA dataset curation.</strong>
   <br/>
   <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">Kitting Audit Video (.mp4)</a> · <a href="docs/assets/toyblocks_flip_forces.mp4">500Hz Flip Force Video (.mp4)</a>
 </p>
 
 > [!NOTE]
-> **Project Status & Feedback Welcome**: `SimAnvil` grew out of a personal embodied-AI workbench with a simple goal—turning painful MuJoCo asset prep, contact debugging, and VLA dataset curation into a **lightweight, practical, out-of-the-box toolkit**. It is currently an early-stage (`v0.1`) indie project; if this workflow resonates with what you are building, issues, feature suggestions, and discussions are warmly welcome!
+> **Project Status & Feedback Welcome**: `SimAnvil` grew out of a personal embodied-AI workbench with a simple goal—turning day-to-day MuJoCo **asset preparation, interactive 3D visualization, physics evaluation, and VLA dataset curation** into a **lightweight, practical, out-of-the-box toolkit**. It is currently an early-stage (`v0.1`) indie project; if this workflow resonates with what you are building, issues, feature suggestions, and discussions are warmly welcome!
 
 ![SimAnvil Counterfactual Physics Audit](docs/assets/hero_demo.gif)
 

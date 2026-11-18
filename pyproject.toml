@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "simanvil"
 version = "0.1.0"
-description = "SimAnvil: The Digital Physics Anvil for Embodied AI — MuJoCo asset forging, 3D contact-force inspection, and quality-weighted VLA dataset compilation."
+description = "SimAnvil: The Digital Physics Anvil for Embodied AI — MuJoCo asset forging, interactive 3D force visualization, closed-loop physics evaluation, and weighted VLA dataset curation."
 readme = "README.md"
 license = {text = "Apache-2.0"}
 requires-python = ">=3.10"
