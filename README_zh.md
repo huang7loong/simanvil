@@ -6,6 +6,9 @@
   <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">凹槽配盘对比视频 (.mp4)</a> · <a href="docs/assets/toyblocks_flip_forces.mp4">500Hz 翻滚受力视频 (.mp4)</a>
 </p>
 
+> [!NOTE]
+> **项目定位与交流欢迎**：`SimAnvil` 源于我个人的具身智能实验工作台，初衷是把日常折腾 MuJoCo 资产处理、接触力学排查和 VLA 造数时踩过的坑，打磨成一套**轻量、实在、开箱即用**的小工具箱。项目目前处于早期演进阶段（`v0.1`），如果你也对这套工具流感兴趣，非常欢迎提 Issue 交流想法、提功能建议或一起完善！
+
 ![SimAnvil 反事实物理审计演示](docs/assets/hero_demo.gif)
 
 ### 500 Hz 非抓持顶边拖动翻滚与三维接触力偶拆解（`0.2×` 慢动作回放）

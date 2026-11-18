@@ -6,6 +6,9 @@
   <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">Kitting Audit Video (.mp4)</a> · <a href="docs/assets/toyblocks_flip_forces.mp4">500Hz Flip Force Video (.mp4)</a>
 </p>
 
+> [!NOTE]
+> **Project Status & Feedback Welcome**: `SimAnvil` grew out of a personal embodied-AI workbench with a simple goal—turning painful MuJoCo asset prep, contact debugging, and VLA dataset curation into a **lightweight, practical, out-of-the-box toolkit**. It is currently an early-stage (`v0.1`) indie project; if this workflow resonates with what you are building, issues, feature suggestions, and discussions are warmly welcome!
+
 ![SimAnvil Counterfactual Physics Audit](docs/assets/hero_demo.gif)
 
 ### 500 Hz Non-Prehensile Edge-Pivot Tumble & 3D Contact-Force Couple (`0.2×` Slow-Mo)
