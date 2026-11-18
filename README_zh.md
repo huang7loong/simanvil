@@ -1,7 +1,7 @@
 # SimAnvil
 
 <p align="left">
-  <strong>面向具身智能的确定性物理铁砧 —— 锻造凹面资产、三维接触力学验尸、提纯带权重的 VLA 训练数据集。</strong>
+  <strong>面向具身智能的数字物理铁砧 —— 锻造凹面资产、三维接触力学验尸、提纯带权重的 VLA 训练数据集。</strong>
   <br/>
   <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">凹槽配盘对比视频 (.mp4)</a> · <a href="docs/assets/toyblocks_flip_forces.mp4">500Hz 翻滚受力视频 (.mp4)</a>
 </p>
@@ -22,7 +22,7 @@
 2. **隐蔽的仿真作弊（Silent Reward Hacking）**：脚本表面跑通，实则依赖吸附焊接、异常高摩擦或状态瞬移，夹爪与工件接触力早已飙升到上百牛顿却无从察觉。
 3. **异常片段污染训练（Poisoned Trajectories）**：打滑重试、IK 奇异报错、撞沿卡死的尾部帧若按 `1.0×` 权重喂进 `LeRobot` 会带偏策略；若整条丢弃又浪费干净前缀并破坏 Action Chunk 的时序连续性。
 
-**`simanvil`** 采用 **“零大模型依赖的确定性物理算子核心（`src/simanvil/`）+ AI 编程助手技能层（`skills/`）”** 双栖架构，既能在无网算力集群跑批处理造数，又能挂载到 Antigravity / Claude Code / Cursor / Codex 中让多模态 Agent 自主完成“建模 → 网页验尸 → 归因改参 → 提纯导数”闭环。
+**`simanvil`** 采用 **“零大模型依赖的轻量物理算子核心（`src/simanvil/`）+ AI 编程助手技能层（`skills/`）”** 双栖架构，既能在无网算力集群跑批处理造数，又能挂载到 Antigravity / Claude Code / Cursor / Codex 中让多模态 Agent 自主完成“建模 → 网页验尸 → 归因改参 → 提纯导数”闭环。
 
 ---
 

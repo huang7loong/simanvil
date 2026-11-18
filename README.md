@@ -1,7 +1,7 @@
 # SimAnvil
 
 <p align="left">
-  <strong>The Deterministic Physics Anvil for Embodied AI — Forge concave assets, inspect causal 3D contact mechanics, and assay quality-weighted VLA datasets.</strong>
+  <strong>The Digital Physics Anvil for Embodied AI — Forge concave assets, inspect 3D contact mechanics, and assay quality-weighted VLA datasets.</strong>
   <br/>
   <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">Kitting Audit Video (.mp4)</a> · <a href="docs/assets/toyblocks_flip_forces.mp4">500Hz Flip Force Video (.mp4)</a>
 </p>
@@ -22,7 +22,7 @@ Scaling synthetic MuJoCo data for Vision-Language-Action (VLA) policies hits thr
 2. **Silent Reward Hacking**: Scripted or RL rollouts often look plausible in RGB while relying on state teleportation, weld-assisted grasps, or `>100 N` penetration spikes.
 3. **Poisoned Imitation Trajectories**: Slip/retry loops, IK singularities, and rim-collision tails degrade policy learning if trained at `1.0×` weight, yet dropping entire episodes wastes clean prefix data and breaks action-chunk temporal continuity.
 
-**`simanvil`** provides a **zero-LLM deterministic physics & dataset core** (`src/simanvil/`) paired with **Agent Skills** (`skills/`), turning both terminal pipelines and AI coding agents into a rigorous physical compilation loop.
+**`simanvil`** provides a **zero-LLM digital physics & dataset core** (`src/simanvil/`) paired with **Agent Skills** (`skills/`), turning both terminal pipelines and AI coding agents into a rigorous physical compilation loop.
 
 ---
 

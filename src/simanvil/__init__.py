@@ -1,4 +1,4 @@
-"""SimAnvil: Deterministic MuJoCo asset forging, contact inspection & VLA dataset assaying."""
+"""SimAnvil: The Digital Physics Anvil for Embodied AI — asset forging, contact inspection & VLA dataset assaying."""
 
 from simanvil.assay import ANOMALY_BC_WEIGHT, assay_to_lerobot_v3, compute_episode_telemetry
 from simanvil.forge import (
