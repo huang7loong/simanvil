@@ -145,6 +145,16 @@ loss = (per_frame_loss * weights).sum() / weights.sum().clamp_min(1e-6)
 - [ ] **v0.3**: Headless contact-sheet visual critic CLI (`simanvil check-viewer`) and `mujoco_warp` batch domain-randomization hooks
 - [ ] **v0.4**: Single-image tabletop reconstruction workflow and real-robot two-stage Dry-Run safety verifier
 
+---
+
+## Acknowledgments & References
+
+`SimAnvil` builds upon ideas, benchmarks, and open-source tools from the robotics community. Special thanks to:
+
+- **[AI2 ToyBlocks](https://github.com/allenai/ToyBlocks)** *(Allen Institute for AI)* — for its declarative tabletop manipulation tasks, PDDL symbolic predicates, non-prehensile contact-flipping benchmarks, and closed-loop verification design that directly informed our trajectory schema and contact-mechanics showcase.
+- **Google DeepMind Gemini Robotics Technical Blogs** (*Gemini 4 Argon for Robotics* & [*Gemini Robotics 2.5*](https://deepmind.google/blog/gemini-robotics-2-5-accelerates-real-world-physical-intelligence/)) — for inspiring the architectural paradigm of contact-aligned simulation compilation, zero-install interactive HTML session auditing against Reward Hacking, and multi-tier hindsight relabeling with anomaly loss downweighting.
+- The foundational open-source physics, geometry, and robot learning ecosystem: **[MuJoCo](https://github.com/google-deepmind/mujoco)**, **[CoACD](https://github.com/SarahWeiii/CoACD)**, **[Blender](https://www.blender.org/)**, and **[LeRobot](https://github.com/huggingface/lerobot)**.
+
 ## License
 
 Apache-2.0. See [LICENSE](LICENSE).

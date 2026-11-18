@@ -113,6 +113,16 @@ loss = (per_frame_loss * weights).sum() / weights.sum().clamp_min(1e-6)
 - [ ] **v0.3**：无头浏览器九宫格诊断图 CLI (`simanvil check-viewer`) 与 `mujoco_warp` GPU 批量域随机化合成接口
 - [ ] **v0.4**：单图桌面场景重建工作流与真机两阶段安全空跑（Dry-Run）标定一致性校验
 
+---
+
+## 致谢与参考 (Acknowledgments)
+
+`SimAnvil` 的设计深受具身智能社区优秀开源基准与工程实践的启发，在此特别致谢：
+
+- **[AI2 ToyBlocks](https://github.com/allenai/ToyBlocks)** *(Allen Institute for AI)* —— 其声明式桌面积木操作基准、PDDL 符号几何谓词、非抓持顶边拖动翻面任务及闭环状态校验机制，直接启发了本项目的轨迹契约设计与接触力偶演示实验。
+- **Google DeepMind Gemini Robotics 系列技术博客**（*Gemini 4 Argon for Robotics* 与 [*Gemini Robotics 2.5*](https://deepmind.google/blog/gemini-robotics-2-5-accelerates-real-world-physical-intelligence/)） —— 其关于接触对齐物理资产编译、免安装交互式 HTML 会话审计台（防 Reward Hacking）以及事后细粒度重标注与异常片段降权的数据飞轮理念，为本项目提供了重要的架构参考。
+- 感谢底层物理仿真、几何处理与机器人学习开源生态：**[MuJoCo](https://github.com/google-deepmind/mujoco)**、**[CoACD](https://github.com/SarahWeiii/CoACD)**、**[Blender](https://www.blender.org/)** 与 **[LeRobot](https://github.com/huggingface/lerobot)**。
+
 ## 开源协议
 
 Apache-2.0，详见 [LICENSE](LICENSE)。
