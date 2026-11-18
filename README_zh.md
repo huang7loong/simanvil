@@ -3,10 +3,14 @@
 <p align="left">
   <strong>面向具身智能的确定性物理铁砧 —— 锻造凹面资产、三维接触力学验尸、提纯带权重的 VLA 训练数据集。</strong>
   <br/>
-  <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">高清对比演示视频 (.mp4)</a>
+  <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">凹槽配盘对比视频 (.mp4)</a> · <a href="docs/assets/toyblocks_flip_forces.mp4">500Hz 翻滚受力视频 (.mp4)</a>
 </p>
 
 ![SimAnvil 反事实物理审计演示](docs/assets/hero_demo.gif)
+
+### 500 Hz 非抓持顶边拖动翻滚与三维接触力偶拆解（`0.2×` 慢动作回放）
+
+![积木翻滚三维接触力偶动态演示](docs/assets/toyblocks_flip_forces.gif)
 
 ---
 

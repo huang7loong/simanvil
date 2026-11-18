@@ -8,7 +8,7 @@ from simanvil.forge import (
     find_blender_binary,
     forge_asset,
 )
-from simanvil.inspect import export_inspection_bundle
+from simanvil.inspect import export_inspection_bundle, inject_3d_contact_arrows, render_contact_mechanics_reel
 from simanvil.trace import (
     AnvilRecorder,
     Episode,

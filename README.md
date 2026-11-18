@@ -3,10 +3,14 @@
 <p align="left">
   <strong>The Deterministic Physics Anvil for Embodied AI — Forge concave assets, inspect causal 3D contact mechanics, and assay quality-weighted VLA datasets.</strong>
   <br/>
-  <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">HD Showcase Video (.mp4)</a>
+  <a href="README.md">English</a> · <a href="README_zh.md">简体中文</a> · <a href="docs/assets/simanvil_showcase.mp4">Kitting Audit Video (.mp4)</a> · <a href="docs/assets/toyblocks_flip_forces.mp4">500Hz Flip Force Video (.mp4)</a>
 </p>
 
 ![SimAnvil Counterfactual Physics Audit](docs/assets/hero_demo.gif)
+
+### 500 Hz Non-Prehensile Edge-Pivot Tumble & 3D Contact-Force Couple (`0.2×` Slow-Mo)
+
+![Non-Prehensile Block Tumble 3D Contact Forces](docs/assets/toyblocks_flip_forces.gif)
 
 ---
 
