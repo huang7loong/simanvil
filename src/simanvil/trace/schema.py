@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+import os
 from pathlib import Path
 
 import mujoco as mj
@@ -81,6 +82,7 @@ class AnvilRecorder:
         self._time: list[float] = []
         self._controls: list[np.ndarray] = []
         self._phases: list[str] = []
+        self._last_complete_state: np.ndarray | None = None
 
     def _snapshot(self) -> np.ndarray:
         buf = np.empty(self._state_size, dtype=np.float64)
@@ -99,6 +101,8 @@ class AnvilRecorder:
         self._controls.append(self.data.ctrl.copy())
         mj.mj_step(self.model, self.data)
         self._step_counter += 1
+        if self._step_counter % self.steps_per_frame == 0:
+            self._last_complete_state = self._snapshot()
 
     def save(
         self,
@@ -106,6 +110,7 @@ class AnvilRecorder:
         *,
         passed: bool = True,
         verdict: str | None = None,
+        anomaly_from_frame: int | None = None,
         use_shrinkwrap_mesh: bool = False,
         save_sibling_xml: bool = True,
     ) -> Path:
@@ -114,13 +119,18 @@ class AnvilRecorder:
 
         # Trim trailing partial-frame substeps so len(controls) == len(states) * steps_per_frame
         n_frames = len(self._controls) // self.steps_per_frame
+        if n_frames <= 0:
+            raise ValueError(
+                f"Cannot save episode with 0 complete frames (recorded {len(self._controls)} steps, "
+                f"steps_per_frame={self.steps_per_frame})."
+            )
         states_arr = np.asarray(self._states[:n_frames], dtype=np.float64)
         qpos_arr = np.asarray(self._qpos[:n_frames], dtype=np.float64)
         qvel_arr = np.asarray(self._qvel[:n_frames], dtype=np.float64)
         time_arr = np.asarray(self._time[:n_frames], dtype=np.float64)
         phases_arr = np.asarray(self._phases[:n_frames])
         ctrl_arr = np.asarray(self._controls[: n_frames * self.steps_per_frame], dtype=np.float64)
-        final_state = self._snapshot()
+        final_state = self._last_complete_state if self._last_complete_state is not None else self._snapshot()
 
         if save_sibling_xml:
             try:
@@ -129,13 +139,22 @@ class AnvilRecorder:
                 # Procedural MjSpec models have no cached XML; save self-contained binary .mjb
                 mj.mj_saveModel(self.model, str(out_npz.with_suffix(".mjb")))
 
+        forged_assets_rel: dict[str, str] = {}
+        for k, adir_str in self.forged_assets.items():
+            try:
+                forged_assets_rel[k] = os.path.relpath(adir_str, out_npz.parent)
+            except ValueError:
+                pass
+
         meta = {
             "key": self.key or out_npz.stem,
             "label": self.label or f"{self.robot_type} · {out_npz.stem}",
             "passed": bool(passed),
             "verdict": verdict or "",
+            "anomaly_from_frame": int(anomaly_from_frame) if anomaly_from_frame is not None else None,
             "use_shrinkwrap_mesh": bool(use_shrinkwrap_mesh),
             "forged_assets": self.forged_assets,
+            "forged_assets_rel": forged_assets_rel,
         }
 
         np.savez_compressed(

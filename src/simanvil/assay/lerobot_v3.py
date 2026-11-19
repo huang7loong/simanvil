@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
 import shutil
 import tempfile
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Iterator, Sequence
 
 import numpy as np
 
@@ -15,10 +16,26 @@ if TYPE_CHECKING:
     from simanvil.trace.schema import Episode
 
 
-os.environ.setdefault("HF_HUB_OFFLINE", "1")
-
 CAM_FRONT = "observation.images.front"
 CAM_WRIST = "observation.images.wrist"
+
+
+@contextmanager
+def _hf_hub_offline_guard(offline: bool = True) -> Iterator[None]:
+    """Temporarily keep HuggingFace Hub offline during local dataset staging without leaking env state."""
+    if not offline:
+        yield
+        return
+    prev = os.environ.get("HF_HUB_OFFLINE")
+    if prev is None:
+        os.environ["HF_HUB_OFFLINE"] = "1"
+    try:
+        yield
+    finally:
+        if prev is None:
+            os.environ.pop("HF_HUB_OFFLINE", None)
+        else:
+            os.environ["HF_HUB_OFFLINE"] = prev
 
 
 def assay_to_lerobot_v3(
@@ -28,8 +45,27 @@ def assay_to_lerobot_v3(
     repo_id: str = "local/simanvil_dataset",
     anomaly_policy: str = "downweight",
     overwrite: bool = True,
+    offline: bool = True,
 ) -> dict:
     """Compile `Episode` sequences into a self-contained, readback-verified LeRobot v3 dataset."""
+    with _hf_hub_offline_guard(offline=offline):
+        return _assay_to_lerobot_v3_impl(
+            episodes=episodes,
+            output_dir=output_dir,
+            repo_id=repo_id,
+            anomaly_policy=anomaly_policy,
+            overwrite=overwrite,
+        )
+
+
+def _assay_to_lerobot_v3_impl(
+    episodes: Sequence["Episode"],
+    output_dir: Path,
+    *,
+    repo_id: str,
+    anomaly_policy: str,
+    overwrite: bool,
+) -> dict:
     try:
         from lerobot.datasets.lerobot_dataset import LeRobotDataset
     except ImportError as exc:

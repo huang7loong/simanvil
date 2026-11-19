@@ -23,6 +23,7 @@ def compute_episode_telemetry(
     env_forces_n: list[float],
     extra_series: dict[str, list[float]] | None = None,
     force_anomaly_from_frame: int | None = None,
+    episode_passed: bool = True,
     impact_spike_threshold_n: float = 95.0,
     anomaly_weight: float = ANOMALY_BC_WEIGHT,
 ) -> list[dict]:
@@ -31,19 +32,31 @@ def compute_episode_telemetry(
     telemetry: list[dict] = []
     clamped_progress = 0.0
 
+    # First determine explicit/physics-triggered anomalies so caller phase tags take precedence
+    # over the unannotated failed-tail fallback.
+    explicit_anomalies: list[bool] = []
+    for idx in range(n_frames):
+        low_phase = phases[idx].lower()
+        is_anom = (
+            (force_anomaly_from_frame is not None and idx >= force_anomaly_from_frame)
+            or any(tok in low_phase for tok in ANOMALY_PHASE_TOKENS)
+            or (env_forces_n[idx] > impact_spike_threshold_n)
+        )
+        explicit_anomalies.append(is_anom)
+
+    use_tail_fallback = (
+        not episode_passed
+        and force_anomaly_from_frame is None
+        and not any(explicit_anomalies)
+    )
+    fallback_start = int(n_frames * 0.55)
+
     for idx in range(n_frames):
         raw_phase = phases[idx]
         g2_stage, g3_prim = split_phase_label(raw_phase)
         nom_prog = idx / float(max(1, n_frames - 1))
 
-        low_phase = raw_phase.lower()
-        is_anomaly = False
-        if force_anomaly_from_frame is not None and idx >= force_anomaly_from_frame:
-            is_anomaly = True
-        elif any(tok in low_phase for tok in ANOMALY_PHASE_TOKENS):
-            is_anomaly = True
-        elif env_forces_n[idx] > impact_spike_threshold_n:
-            is_anomaly = True
+        is_anomaly = explicit_anomalies[idx] or (use_tail_fallback and idx >= fallback_start)
 
         if is_anomaly:
             bc_weight = float(anomaly_weight)

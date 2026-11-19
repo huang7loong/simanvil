@@ -6,11 +6,17 @@ from pathlib import Path
 
 from lxml import etree
 import mujoco as mj
+import pytest
 
-from simanvil import ForgeConfig, attach_forged_asset, forge_asset
+from simanvil import ForgeConfig, attach_forged_asset, find_blender_binary, forge_asset
 
 
 def test_forge_z_up_alignment_groups_and_mjspec_attach(tmp_path: Path) -> None:
+    try:
+        find_blender_binary()
+    except FileNotFoundError:
+        pytest.skip("Headless Blender 4.x not installed on this machine (set BLENDER_BIN to enable)")
+
     asset_dir = tmp_path / "forged_tray"
     report = forge_asset(
         ForgeConfig(
@@ -28,6 +34,9 @@ def test_forge_z_up_alignment_groups_and_mjspec_attach(tmp_path: Path) -> None:
     assert report["mjcf_groups"] == {"visual": 2, "collision": 3, "sites": 4}
     assert report["smoke_test"]["passed"] is True
     assert report["smoke_test"]["cavity_clearance_gain_mm"] > 24.0
+    for fval in report["files"].values():
+        assert not Path(fval).is_absolute()
+        assert (asset_dir / fval).is_file()
 
     # Verify standalone asset.xml uses group="2" visual, group="3" collision, group="4" sites
     xml_doc = etree.parse(str(asset_dir / "asset.xml"))

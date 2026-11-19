@@ -4,7 +4,7 @@
 2. Simulates a 4-DoF Cartesian parallel-jaw gripper picking & seating a precision block under:
    - `coacd`      (24 convex hulls -> seats cleanly on 8 mm pocket floor, PASS)
    - `shrinkwrap` (naive single convex hull -> blocked by rim air-wall, 0.15x BC downweight)
-3. Exports a zero-backend HTML Session Viewer bundle to `outputs/quickstart_session`.
+3. Exports a zero-backend HTML Session Viewer bundle to `outputs/quickstart/session`.
 """
 
 from __future__ import annotations

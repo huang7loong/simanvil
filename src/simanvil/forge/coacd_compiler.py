@@ -83,10 +83,10 @@ def find_blender_binary(explicit: Path | None = None) -> Path:
     which_bin = shutil.which("blender") or shutil.which("Blender")
     if which_bin:
         candidates.append(Path(which_bin))
-    # Also check sibling project caches on developer workstations
-    projects_dir = Path(__file__).resolve().parents[4]
-    for cached in projects_dir.glob("*/.cache/blender-replay/Blender.app/Contents/MacOS/Blender"):
-        candidates.append(cached)
+    if os.name == "nt":
+        prog_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files")) / "Blender Foundation"
+        if prog_files.is_dir():
+            candidates.extend(sorted(prog_files.glob("Blender */blender.exe"), reverse=True))
     for cand in candidates:
         if cand.is_file():
             return cand
@@ -401,11 +401,11 @@ def forge_asset(cfg: ForgeConfig) -> dict:
         "smoke_test": smoke,
         "hulls": hull_stats,
         "files": {
-            "visual_glb": str(visual_glb),
-            "hulls_debug_glb": str(hulls_debug_glb),
-            "naive_shrinkwrap_glb": str(naive_glb),
-            "collision_source_obj": str(collision_obj),
-            "asset_xml": str(asset_xml),
+            "visual_glb": visual_glb.name,
+            "hulls_debug_glb": hulls_debug_glb.name,
+            "naive_shrinkwrap_glb": naive_glb.name,
+            "collision_source_obj": collision_obj.name,
+            "asset_xml": asset_xml.name,
         },
         "compile_wall_time_s": round(time.perf_counter() - t0, 3),
     }

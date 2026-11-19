@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Callable
@@ -165,6 +166,27 @@ def _compute_indices(total: int, max_frames: int | None) -> np.ndarray:
     return np.unique(np.linspace(0, total - 1, max_frames).round().astype(np.int64))
 
 
+def _compute_model_key(
+    model: mj.MjModel,
+    model_stem: str,
+    forged_map: dict[str, tuple[Path, dict]],
+) -> str:
+    body_sig = [model.body(i).name or f"body_{i}" for i in range(model.nbody)]
+    if forged_map:
+        forged_sig = [
+            (bname, str(rep.get("asset_name", "")), int(rep.get("hull_count", 0)))
+            for bname, (_, rep) in sorted(forged_map.items())
+        ]
+        payload = {"bodies": body_sig, "forged": forged_sig}
+        prefix = "forged"
+    else:
+        geom_sig = [model.geom(g).name or f"t{int(model.geom_type[g])}" for g in range(model.ngeom)]
+        payload = {"bodies": body_sig, "geoms": geom_sig}
+        prefix = f"mdl_{model_stem}"
+    digest = hashlib.sha256(json.dumps(payload, sort_keys=True).encode("utf-8")).hexdigest()[:8]
+    return f"{prefix}_{digest}"
+
+
 def extract_episode_from_callback(
     *,
     key: str,
@@ -185,6 +207,9 @@ def extract_episode_from_callback(
     render_cameras: bool = True,
 ) -> Episode:
     """Universal frame-by-frame forward kinematics, 3D contact-force & dual-camera extractor."""
+    if num_frames <= 0:
+        raise ValueError("num_frames must be >= 1.")
+
     data = mj.MjData(model)
     ee_geoms, obj_bodies = _discover_ee_and_object_ids(model)
     obj_set = set(obj_bodies)
@@ -195,7 +220,13 @@ def extract_episode_from_callback(
     focus_xyz = compute_workspace_center(model, data.xpos)
     ov_cam, ov_label, wr_cam, wr_label = _select_dual_cameras(model, focus_xyz)
 
-    renderer = mj.Renderer(model, height=CAMERA_H, width=CAMERA_W) if render_cameras else None
+    orig_offw = int(model.vis.global_.offwidth)
+    orig_offh = int(model.vis.global_.offheight)
+    renderer: mj.Renderer | None = None
+    if render_cameras:
+        model.vis.global_.offwidth = max(orig_offw, CAMERA_W)
+        model.vis.global_.offheight = max(orig_offh, CAMERA_H)
+        renderer = mj.Renderer(model, height=CAMERA_H, width=CAMERA_W)
     scene_opt = mj.MjvOption()
     scene_opt.geomgroup[:] = [1, 1, 1, 0, 0, 0]
 
@@ -217,76 +248,87 @@ def extract_episode_from_callback(
     wrench = np.zeros(6, dtype=np.float64)
     peak_episode_force = 0.0
 
-    for f_idx in range(num_frames):
-        t_sec, raw_phase, act_vec, sub_vec = apply_frame_fn(model, data, f_idx)
-        mj.mj_forward(model, data)
+    try:
+        for f_idx in range(num_frames):
+            t_sec, raw_phase, act_vec, sub_vec = apply_frame_fn(model, data, f_idx)
+            mj.mj_forward(model, data)
 
-        times.append(round(float(t_sec), 4))
-        raw_phases.append(raw_phase)
-        xpos_list.append(data.xpos.copy().astype(np.float32))
-        xquat_list.append(data.xquat.copy().astype(np.float32))
+            times.append(round(float(t_sec), 4))
+            raw_phases.append(raw_phase)
+            xpos_list.append(data.xpos.copy().astype(np.float32))
+            xquat_list.append(data.xquat.copy().astype(np.float32))
 
-        obs_vec = data.qpos[qpos_idx].astype(np.float32) if len(qpos_idx) else np.zeros(1, dtype=np.float32)
-        obs_list.append(obs_vec)
-        if act_vec is None:
-            act_vec = data.ctrl.copy().astype(np.float32) if model.nu > 0 else obs_vec.copy()
-        act_list.append(np.asarray(act_vec, dtype=np.float32))
-        if sub_vec is not None:
-            sub_list.append(np.asarray(sub_vec, dtype=np.float32).ravel())
-        else:
-            has_substeps = False
+            obs_vec = data.qpos[qpos_idx].astype(np.float32) if len(qpos_idx) else np.zeros(1, dtype=np.float32)
+            obs_list.append(obs_vec)
+            if act_vec is None:
+                act_vec = data.ctrl.copy().astype(np.float32) if model.nu > 0 else obs_vec.copy()
+            act_list.append(np.asarray(act_vec, dtype=np.float32))
+            if sub_vec is not None:
+                sub_list.append(np.asarray(sub_vec, dtype=np.float32).ravel())
+            else:
+                has_substeps = False
 
-        ee_f = 0.0
-        env_f = 0.0
-        frame_contacts: list[dict] = []
+            ee_f = 0.0
+            env_f = 0.0
+            frame_contacts: list[dict] = []
 
-        for k in range(data.ncon):
-            con = data.contact[k]
-            g1, g2 = int(con.geom1), int(con.geom2)
-            if (g1 in ee_geoms) and (g2 in ee_geoms):
-                continue
-            b1, b2 = int(model.geom_bodyid[g1]), int(model.geom_bodyid[g2])
-            inv_ee = (g1 in ee_geoms) or (g2 in ee_geoms)
-            inv_obj = (b1 in obj_set) or (b2 in obj_set)
-            if not (inv_ee or inv_obj):
-                continue
+            for k in range(data.ncon):
+                con = data.contact[k]
+                g1, g2 = int(con.geom1), int(con.geom2)
+                if (g1 in ee_geoms) and (g2 in ee_geoms):
+                    continue
+                b1, b2 = int(model.geom_bodyid[g1]), int(model.geom_bodyid[g2])
+                inv_ee = (g1 in ee_geoms) or (g2 in ee_geoms)
+                inv_obj = (b1 in obj_set) or (b2 in obj_set)
+                if not (inv_ee or inv_obj):
+                    continue
 
-            mj.mj_contactForce(model, data, k, wrench)
-            fnorm = float(np.linalg.norm(wrench[:3]))
-            if fnorm < 0.05 or not np.isfinite(fnorm):
-                continue
+                mj.mj_contactForce(model, data, k, wrench)
+                fnorm = float(np.linalg.norm(wrench[:3]))
+                if fnorm < 0.05 or not np.isfinite(fnorm):
+                    continue
 
-            fnorm_capped = min(fnorm, 250.0)
-            f_world = con.frame.reshape(3, 3).T @ (wrench[:3] * (fnorm_capped / max(fnorm, 1e-9)))
-            peak_episode_force = max(peak_episode_force, fnorm_capped)
+                fnorm_capped = min(fnorm, 250.0)
+                # In MuJoCo, wrench[:3] is force exerted by geom1 on geom2 in contact frame.
+                # Normalize sign so vectors consistently show force acting ON the manipulated object.
+                if b2 in obj_set:
+                    sign = 1.0
+                elif b1 in obj_set:
+                    sign = -1.0
+                else:
+                    sign = 1.0 if (g1 in ee_geoms) else -1.0
+                f_world = sign * (con.frame.reshape(3, 3).T @ (wrench[:3] * (fnorm_capped / max(fnorm, 1e-9))))
+                peak_episode_force = max(peak_episode_force, fnorm_capped)
 
-            if inv_ee:
-                ee_f += float(min(abs(wrench[0]), 250.0))
-            elif inv_obj:
-                env_f += fnorm_capped
+                if inv_ee:
+                    ee_f += float(min(abs(wrench[0]), 250.0))
+                elif inv_obj:
+                    env_f += fnorm_capped
 
-            frame_contacts.append(
-                {
-                    "pos": [round(float(v), 5) for v in con.pos],
-                    "force": [round(float(v), 3) for v in f_world],
-                    "mag": round(fnorm_capped, 2),
-                    "kind": "gripper" if inv_ee else "part_tray",
-                    "pair": f"{model.body(b1).name or b1} ↔ {model.body(b2).name or b2}",
-                }
-            )
+                frame_contacts.append(
+                    {
+                        "pos": [round(float(v), 5) for v in con.pos],
+                        "force": [round(float(v), 3) for v in f_world],
+                        "mag": round(fnorm_capped, 2),
+                        "kind": "gripper" if inv_ee else "part_tray",
+                        "pair": f"{model.body(b1).name or b1} ↔ {model.body(b2).name or b2}",
+                    }
+                )
 
-        contacts_list.append(frame_contacts)
-        ee_forces.append(ee_f)
-        env_forces.append(env_f)
+            contacts_list.append(frame_contacts)
+            ee_forces.append(ee_f)
+            env_forces.append(env_f)
 
+            if renderer is not None:
+                renderer.update_scene(data, camera=ov_cam, scene_option=scene_opt)
+                ov_frames.append(renderer.render().copy())
+                renderer.update_scene(data, camera=wr_cam, scene_option=scene_opt)
+                wr_frames.append(renderer.render().copy())
+    finally:
         if renderer is not None:
-            renderer.update_scene(data, camera=ov_cam, scene_option=scene_opt)
-            ov_frames.append(renderer.render().copy())
-            renderer.update_scene(data, camera=wr_cam, scene_option=scene_opt)
-            wr_frames.append(renderer.render().copy())
-
-    if renderer is not None:
-        renderer.close()
+            renderer.close()
+        model.vis.global_.offwidth = orig_offw
+        model.vis.global_.offheight = orig_offh
 
     xpos_arr = np.stack(xpos_list, axis=0)
     ranked_objs = sorted(obj_bodies, key=lambda bid: float(np.ptp(xpos_arr[:, bid, 2])), reverse=True)[:2]
@@ -313,6 +355,7 @@ def extract_episode_from_callback(
         env_forces_n=env_forces,
         extra_series=extra_series,
         force_anomaly_from_frame=force_anomaly_from_frame,
+        episode_passed=episode_passed,
     )
 
     downweighted = sum(1 for t in telemetry_list if float(t["bc_loss_weight"]) < 1.0)
@@ -470,23 +513,36 @@ def _load_standard_npz(
             raise ValueError(f"Unsupported `.npz` keys in {target}: {sorted(files)}")
 
     forged_map: dict[str, tuple[Path, dict]] = {}
-    for bname, adir_str in meta.get("forged_assets", {}).items():
-        adir = Path(adir_str)
-        rep_path = adir / "forge_report.json"
-        if rep_path.is_file():
-            forged_map[bname] = (adir, json.loads(rep_path.read_text(encoding="utf-8")))
+    forged_rel_meta = meta.get("forged_assets_rel", {})
+    forged_abs_meta = meta.get("forged_assets", {})
+    for bname in set(forged_rel_meta.keys()) | set(forged_abs_meta.keys()):
+        candidates: list[Path] = []
+        if bname in forged_rel_meta:
+            candidates.append((target.parent / forged_rel_meta[bname]).resolve())
+        if bname in forged_abs_meta:
+            candidates.append(Path(forged_abs_meta[bname]))
+        for adir in candidates:
+            rep_path = adir / "forge_report.json"
+            if rep_path.is_file():
+                forged_map[bname] = (adir, json.loads(rep_path.read_text(encoding="utf-8")))
+                break
 
     passed_flag = bool(meta.get("passed", True))
     ep_key = str(meta.get("key") or target.stem)
     ep_label = str(meta.get("label") or f"{robot_type} · {target.stem}")
     verdict = str(meta.get("verdict") or "") or None
-    anom_start = int(n_total * 0.55) if not passed_flag else None
+    raw_anom_start = meta.get("anomaly_from_frame")
+    anom_start = (
+        int(np.searchsorted(idxs, int(raw_anom_start)))
+        if raw_anom_start is not None
+        else None
+    )
 
     return [
         extract_episode_from_callback(
             key=ep_key,
             label=ep_label,
-            model_key=f"mdl_{model_stem}" if not forged_map else "forged_scene",
+            model_key=_compute_model_key(model, model_stem, forged_map),
             robot_type=robot_type,
             task=task,
             model=model,

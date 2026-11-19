@@ -226,8 +226,8 @@ def normalize_and_export(
         "bounds_min_m": bounds_min,
         "bounds_max_m": bounds_max,
         "extents_m": [bounds_max[i] - bounds_min[i] for i in range(3)],
-        "visual_glb": str(visual_glb),
-        "collision_source_obj": str(collision_obj),
+        "visual_glb": visual_glb.name,
+        "collision_source_obj": collision_obj.name,
         "coordinate_frame": "Z-up right-handed (X-right, Y-forward, Z-up), origin at center of volume",
     }
 

@@ -18,17 +18,26 @@ from scipy.spatial.transform import Rotation
 
 
 def _load_font(size: int, bold: bool = False):
-    for c in (
+    candidates = [
+        # macOS
         "/System/Library/Fonts/Supplemental/Menlo.ttc",
         "/System/Library/Fonts/SFNSMono.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
-    ):
+        # Linux
+        "/usr/share/fonts/truetype/dejavu/DejaVuSansMono-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationMono-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation/LiberationMono-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+    ]
+    for c in candidates:
         if Path(c).exists():
             try:
                 return ImageFont.truetype(c, size)
             except Exception:
                 pass
-    return ImageFont.load_default()
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:
+        return ImageFont.load_default()
 
 
 def inject_3d_contact_arrows(
@@ -134,6 +143,9 @@ def render_contact_mechanics_reel(
     fps: int = 25,
 ) -> dict:
     """Render a side-by-side 3D Force-Vector + Wrist Camera + Shear/Normal Telemetry MP4 & GIF."""
+    if not step_states:
+        raise ValueError("step_states must contain at least one frame.")
+
     target_bid = model.body(target_body_name).id
     obj_bodies = {target_bid}
 
@@ -148,58 +160,69 @@ def render_contact_mechanics_reel(
     main_w, main_h = 756, 588
     wrist_w, wrist_h = 468, 263
 
-    model.vis.global_.offwidth = max(int(model.vis.global_.offwidth), main_w)
-    model.vis.global_.offheight = max(int(model.vis.global_.offheight), main_h)
+    orig_offw = int(model.vis.global_.offwidth)
+    orig_offh = int(model.vis.global_.offheight)
+    r_main: mj.Renderer | None = None
+    r_wrist: mj.Renderer | None = None
 
-    r_main = mj.Renderer(model, height=main_h, width=main_w)
-    r_wrist = mj.Renderer(model, height=wrist_h, width=wrist_w)
-    scene_opt = mj.MjvOption()
-    scene_opt.geomgroup[:] = [1, 1, 1, 0, 0, 0]
-
-    # Pre-pass to collect exact force & rotation angle series across all rendered frames
-    init_rot = Rotation.from_quat(step_states[0][3].xquat[target_bid][[1, 2, 3, 0]])
     records: list[dict] = []
     main_imgs: list[np.ndarray] = []
     wrist_imgs: list[np.ndarray] = []
 
-    for sim_t, phase_lbl, speed_tag, d_frame in step_states:
-        r_main.update_scene(d_frame, camera=closeup_cam, scene_option=scene_opt)
-        f_stats = inject_3d_contact_arrows(
-            model,
-            d_frame,
-            r_main.scene,
-            ee_geoms=ee_geoms,
-            obj_bodies=obj_bodies,
-        )
-        main_imgs.append(r_main.render().copy())
+    try:
+        model.vis.global_.offwidth = max(orig_offw, main_w)
+        model.vis.global_.offheight = max(orig_offh, main_h)
 
-        r_wrist.update_scene(d_frame, camera=wrist_cam_name, scene_option=scene_opt)
-        inject_3d_contact_arrows(
-            model,
-            d_frame,
-            r_wrist.scene,
-            ee_geoms=ee_geoms,
-            obj_bodies=obj_bodies,
-            force_scale_m_per_n=0.0032,
-        )
-        wrist_imgs.append(r_wrist.render().copy())
+        r_main = mj.Renderer(model, height=main_h, width=main_w)
+        r_wrist = mj.Renderer(model, height=wrist_h, width=wrist_w)
+        scene_opt = mj.MjvOption()
+        scene_opt.geomgroup[:] = [1, 1, 1, 0, 0, 0]
 
-        cur_rot = Rotation.from_quat(d_frame.xquat[target_bid][[1, 2, 3, 0]])
-        rel_deg = float(np.degrees((cur_rot * init_rot.inv()).magnitude()))
-        records.append(
-            {
-                "t": sim_t,
-                "phase": phase_lbl,
-                "speed_tag": speed_tag,
-                "tilt_deg": rel_deg,
-                **f_stats,
-            }
-        )
+        # Pre-pass to collect exact force & rotation angle series across all rendered frames
+        init_rot = Rotation.from_quat(step_states[0][3].xquat[target_bid][[1, 2, 3, 0]])
 
-    r_main.close()
-    r_wrist.close()
-    for gid, a in orig_alpha.items():
-        model.geom_rgba[gid, 3] = a
+        for sim_t, phase_lbl, speed_tag, d_frame in step_states:
+            r_main.update_scene(d_frame, camera=closeup_cam, scene_option=scene_opt)
+            f_stats = inject_3d_contact_arrows(
+                model,
+                d_frame,
+                r_main.scene,
+                ee_geoms=ee_geoms,
+                obj_bodies=obj_bodies,
+            )
+            main_imgs.append(r_main.render().copy())
+
+            r_wrist.update_scene(d_frame, camera=wrist_cam_name, scene_option=scene_opt)
+            inject_3d_contact_arrows(
+                model,
+                d_frame,
+                r_wrist.scene,
+                ee_geoms=ee_geoms,
+                obj_bodies=obj_bodies,
+                force_scale_m_per_n=0.0032,
+            )
+            wrist_imgs.append(r_wrist.render().copy())
+
+            cur_rot = Rotation.from_quat(d_frame.xquat[target_bid][[1, 2, 3, 0]])
+            rel_deg = float(np.degrees((cur_rot * init_rot.inv()).magnitude()))
+            records.append(
+                {
+                    "t": sim_t,
+                    "phase": phase_lbl,
+                    "speed_tag": speed_tag,
+                    "tilt_deg": rel_deg,
+                    **f_stats,
+                }
+            )
+    finally:
+        if r_main is not None:
+            r_main.close()
+        if r_wrist is not None:
+            r_wrist.close()
+        model.vis.global_.offwidth = orig_offw
+        model.vis.global_.offheight = orig_offh
+        for gid, a in orig_alpha.items():
+            model.geom_rgba[gid, 3] = a
 
     font_title = _load_font(16, bold=True)
     font_hdr = _load_font(13, bold=True)
@@ -282,22 +305,23 @@ def render_contact_mechanics_reel(
             font=font_sm,
         )
         px0, px1, py0, py1 = rx + 34, rx + wrist_w - 10, c1_y0 + 30, c1_y1 - 12
+        denom = max(1, n_total - 1)
         pts_norm = [
-            (px0 + (k / (n_total - 1)) * (px1 - px0), py1 - min(1.0, records[k]["ee_normal_z_n"] / max_force) * (py1 - py0))
+            (px0 + (k / denom) * (px1 - px0), py1 - min(1.0, records[k]["ee_normal_z_n"] / max_force) * (py1 - py0))
             for k in range(n_total)
         ]
         pts_piv = [
-            (px0 + (k / (n_total - 1)) * (px1 - px0), py1 - min(1.0, records[k]["support_total_n"] / max_force) * (py1 - py0))
+            (px0 + (k / denom) * (px1 - px0), py1 - min(1.0, records[k]["support_total_n"] / max_force) * (py1 - py0))
             for k in range(n_total)
         ]
         pts_shear = [
-            (px0 + (k / (n_total - 1)) * (px1 - px0), py1 - min(1.0, records[k]["ee_shear_xy_n"] / max_force) * (py1 - py0))
+            (px0 + (k / denom) * (px1 - px0), py1 - min(1.0, records[k]["ee_shear_xy_n"] / max_force) * (py1 - py0))
             for k in range(n_total)
         ]
         draw.line(pts_piv, fill=(251, 191, 36), width=2)
         draw.line(pts_norm, fill=(56, 189, 248), width=2)
         draw.line(pts_shear, fill=(248, 113, 113), width=2)
-        cur_px = px0 + (i / (n_total - 1)) * (px1 - px0)
+        cur_px = px0 + (i / denom) * (px1 - px0)
         draw.line([(cur_px, py0), (cur_px, py1)], fill=(248, 250, 252), width=2)
         draw.text((rx + 4, py0 - 2), f"{int(max_force)}N", fill=(108, 127, 150), font=font_sm)
         draw.text((rx + 8, py1 - 8), "0N", fill=(108, 127, 150), font=font_sm)
@@ -308,7 +332,7 @@ def render_contact_mechanics_reel(
         draw.text((rx + 10, c2_y0 + 8), "BLOCK TUMBLE ORIENTATION θ (0° -> 90° EDGE PIVOT)", fill=(203, 213, 225), font=font_sm)
         qy0, qy1 = c2_y0 + 30, c2_y1 - 12
         pts_deg = [
-            (px0 + (k / (n_total - 1)) * (px1 - px0), qy1 - min(1.0, records[k]["tilt_deg"] / 100.0) * (qy1 - qy0))
+            (px0 + (k / denom) * (px1 - px0), qy1 - min(1.0, records[k]["tilt_deg"] / 100.0) * (qy1 - qy0))
             for k in range(n_total)
         ]
         y_90 = qy1 - 0.90 * (qy1 - qy0)
@@ -330,6 +354,7 @@ def render_contact_mechanics_reel(
     res = {"mp4": str(out_mp4), "mp4_kb": round(out_mp4.stat().st_size / 1024, 1), "frames": n_total}
     if out_gif is not None:
         out_gif = Path(out_gif).resolve()
+        out_gif.parent.mkdir(parents=True, exist_ok=True)
         sub = [im.resize((860, 452), Image.Resampling.LANCZOS) for im in composed_frames[::2]]
         pal = sub[len(sub) // 2].quantize(colors=128, method=Image.Quantize.MEDIANCUT)
         quant = [im.quantize(palette=pal, dither=Image.Dither.NONE) for im in sub]

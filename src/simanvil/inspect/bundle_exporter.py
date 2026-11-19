@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import html
 import json
 from pathlib import Path
+import re
 import shutil
 from typing import Sequence
 
@@ -242,7 +244,7 @@ def _export_model_geometries(out_root: Path, model_key: str, ep: Episode) -> dic
         note = (
             "<strong>SimAnvil Forge:</strong> "
             + " · ".join(
-                f"{k}: {v['hull_count']} hulls (freed {v['freed_void_cm3']} cm³)"
+                f"{html.escape(k)}: {v['hull_count']} hulls (freed {v['freed_void_cm3']} cm³)"
                 for k, v in forged_summary.items()
             )
             + f" · Z-up Δ={ts['z_up_delta_m']} m"
@@ -250,7 +252,7 @@ def _export_model_geometries(out_root: Path, model_key: str, ep: Episode) -> dic
     else:
         n_col = sum(1 for b in bodies_manifest if b["coacd_glb"])
         note = (
-            f"<strong>SimAnvil Inspector:</strong> Embodiment <code>{ep.robot_type}</code> · "
+            f"<strong>SimAnvil Inspector:</strong> Embodiment <code>{html.escape(ep.robot_type)}</code> · "
             f"{len(bodies_manifest)} rigid bodies ({n_col} collision-hull groups) · Z-up [0,0,1]"
         )
 
@@ -281,22 +283,33 @@ def export_inspection_bundle(
 
     models_payload: dict[str, dict] = {}
     runs_payload: dict[str, dict] = {}
+    run_order: list[str] = []
+    runs_exported_summary: dict[str, dict] = {}
 
     for ep in episodes:
         if ep.model_key not in models_payload:
             models_payload[ep.model_key] = _export_model_geometries(out, ep.model_key, ep)
 
-        ov_rel = f"videos/{ep.key}_overview.mp4"
-        wr_rel = f"videos/{ep.key}_wrist.mp4"
+        base_key = re.sub(r"[^A-Za-z0-9_.-]+", "_", ep.key).strip("_") or "episode"
+        run_key = base_key
+        suffix = 2
+        while run_key in runs_payload:
+            run_key = f"{base_key}_{suffix}"
+            suffix += 1
+
+        ov_rel = f"videos/{run_key}_overview.mp4"
+        wr_rel = f"videos/{run_key}_wrist.mp4"
         _encode_intra_mp4(ep.overview_rgb, out / ov_rel, fps=ep.fps)
         _encode_intra_mp4(ep.wrist_rgb, out / wr_rel, fps=ep.fps)
 
-        runs_payload[ep.key] = {
-            "key": ep.key,
+        run_order.append(run_key)
+        runs_exported_summary[run_key] = ep.audit
+        runs_payload[run_key] = {
+            "key": run_key,
             "label": ep.label,
             "model_key": ep.model_key,
             "robot_type": ep.robot_type,
-            "mode": ep.audit.get("mode", ep.key),
+            "mode": ep.audit.get("mode", run_key),
             "use_shrinkwrap_mesh": bool(ep.use_shrinkwrap_mesh),
             "g1_instruction": ep.task,
             "fps": ep.fps,
@@ -327,7 +340,7 @@ def export_inspection_bundle(
             "threejs_quat_order": "[x, y, z, w]",
         },
         "models": models_payload,
-        "run_order": [ep.key for ep in episodes],
+        "run_order": run_order,
         "runs": runs_payload,
     }
     (out / "session_data.json").write_text(json.dumps(session_payload, separators=(",", ":")), encoding="utf-8")
@@ -345,5 +358,5 @@ def export_inspection_bundle(
         "session_dir": str(out),
         "index_html": str(out / "index.html"),
         "models_exported": list(models_payload.keys()),
-        "runs_exported": {ep.key: ep.audit for ep in episodes},
+        "runs_exported": runs_exported_summary,
     }

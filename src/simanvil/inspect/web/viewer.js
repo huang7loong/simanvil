@@ -7,6 +7,15 @@
 
   THREE.Object3D.DefaultUp.set(0, 0, 1);
 
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
   const STAGE_PALETTE = [
     "#0284c7",
     "#0d9488",
@@ -490,7 +499,8 @@
     const sdefs = run.series_defs || [];
     const parts = sdefs.map((sd) => {
       const val = typeof telFrame[sd.key] === "number" ? telFrame[sd.key].toFixed(1) : "0.0";
-      return `<i class="swatch" style="background:${sd.color}"></i>${sd.label} <strong class="mono">${val}${sd.unit || ""}</strong>`;
+      const safeColor = escapeHtml(sd.color || "rgb(248, 113, 113)");
+      return `<i class="swatch" style="background:${safeColor}"></i>${escapeHtml(sd.label)} <strong class="mono">${val}${escapeHtml(sd.unit || "")}</strong>`;
     });
     parts.push(`<i class="swatch green"></i>进度`);
     chart2LegendEl.innerHTML = parts.join(" ");
@@ -557,7 +567,7 @@
       .slice()
       .sort((a, b) => b.mag - a.mag)
       .slice(0, 5)
-      .map((c) => `<li><span>${c.pair}</span><strong>${c.mag.toFixed(2)} N</strong></li>`)
+      .map((c) => `<li><span>${escapeHtml(c.pair)}</span><strong>${c.mag.toFixed(2)} N</strong></li>`)
       .join("");
 
     const t = run.telemetry[clamped];
@@ -785,7 +795,7 @@
       btn.className = "run-tab";
       btn.dataset.run = rk;
       const passed = Boolean(r.audit && r.audit.passed);
-      btn.innerHTML = `<span class="dot ${passed ? "pass" : "fail"}"></span><span>${r.label}</span>`;
+      btn.innerHTML = `<span class="dot ${passed ? "pass" : "fail"}"></span><span>${escapeHtml(r.label)}</span>`;
       btn.addEventListener("click", () => switchRun(rk));
       runSwitcherEl.appendChild(btn);
     });
@@ -812,7 +822,7 @@
       if (state.accumSec >= frameDur) {
         const stepFrames = Math.floor(state.accumSec / frameDur);
         state.accumSec -= stepFrames * frameDur;
-        const nextFrame = (state.frame + stepFrames) % run.frame_count;
+        const nextFrame = (state.frame + stepFrames) % Math.max(1, run.frame_count);
         applyFrame(nextFrame);
       }
     }
@@ -822,7 +832,7 @@
   }
 
   init().catch((err) => {
-    console.error("Failed to initialize Open-Argon Session Viewer:", err);
+    console.error("Failed to initialize SimAnvil Session Viewer:", err);
     verdictPill.className = "verdict-pill fail";
     verdictPill.textContent = "SESSION LOAD ERROR";
   });

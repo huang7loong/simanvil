@@ -31,7 +31,9 @@ __all__ = [
     "export_inspection_bundle",
     "find_blender_binary",
     "forge_asset",
+    "inject_3d_contact_arrows",
     "load_episodes",
     "register_episode_adapter",
+    "render_contact_mechanics_reel",
     "verify_causal_replay",
 ]
